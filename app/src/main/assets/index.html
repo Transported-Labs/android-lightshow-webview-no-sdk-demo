@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <style>
+            body {background: lightgrey;}
+            .button { position: relative; min-width: 160px; height: 54px; font-size: 16px;}
+            .switch { position: relative; display: inline-block; width: 60px; height: 34px; }
+            .switch input { opacity: 0; width: 0; height: 0; }
+            label.switch { outline: none; }
+            .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; -webkit-transition: .4s; transition: .4s; outline: none; }
+            .slider:before { position: absolute; content: ""; height: 26px; width: 26px; left: 4px; bottom: 4px; background-color: white; -webkit-transition: .4s; transition: .4s; }
+            input:checked + .slider { background-color: #2196F3; }
+            input:focus + .slider { box-shadow: 0 0 1px #2196F3; }
+            input:checked + .slider:before { -webkit-transform: translateX(26px); -ms-transform: translateX(26px); transform: translateX(26px); }
+            .slider.round { border-radius: 34px; }
+            .slider.round:before { border-radius: 50%; }
+        </style>
+    </head>
+    <body>
+        <h2>&nbsp;</h2>
+        <h2 id="value">Toggle Torch using switch below</h2>
+        <table><tr><td>
+        <label class="switch">
+            <input type="checkbox" name="torchCheckbox">
+            <span class="slider round"></span>
+        </label>
+        <h3></h3>
+        </td><td>
+        <button class="button" name="torchLevelButton">Turn on dimmed</button>
+        <h3></h3>
+        </td></tr></table>
+        <button class="button" name="torchStateButton">Check state</button>
+        <h3></h3>
+        <button class="button" name="vibrateButton">Vibrate</button>
+        <h3></h3>
+        <button class="button" name="sparkleButton">Simple sparkle</button>
+        <h3></h3>
+        <button class="button" name="advancedSparkleButton">Advanced sparkle</button>
+        <h3></h3>
+        <table><tr><td>
+        <button class="button" name="hasPhotoSaveButton">Has Photo save perm.?</button>
+        <h3></h3>
+        </td><td>
+        <button class="button" name="askPhotoSaveButton">Ask Photo save perm.</button>
+        <h3></h3>
+        </td></tr><tr><td>
+        <button class="button" name="hasMicButton">Has Mic permission?</button>
+        <h3></h3>
+        </td><td>
+        <button class="button" name="askMicButton">Ask Mic permission</button>
+        <h3></h3>
+        </td></tr><tr><td>
+        <button class="button" name="hasCamButton">Has Cam permission?</button>
+        <h3></h3>
+        </td><td>
+        <button class="button" name="askCamButton">Ask Cam permission</button>
+        <h3></h3>
+        </td></tr></table>
+        <button class="button" name="testErrorButton">Test error</button>
+        <h3></h3>
+        <div id="methodResult"></div>
+        <h3></h3>
+        <script>
+            const requestId = 323412;
+            const torchServiceName = "torch";
+            const vibrationServiceName = "vibration";
+            const permissionsServiceName = "permissions";
+
+            //JSON is passed from app like that:
+            //cueSDKCallback(JSON.stringify({
+            //}))
+            function cueSDKCallback(data) {
+                //Process data as JSON object, e.g.
+                //var transferData = JSON.parse(data);
+                document.getElementById('methodResult').innerText = "Returned JSON: " + data.toString();
+            }
+            
+            function callMethod(...args) {
+                var argString = JSON.stringify([requestId, ...args]);
+                if (window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.cueSDK) {
+                    window.webkit.messageHandlers.cueSDK.postMessage(argString);
+                }
+                // Call in Android WebView
+                if (cueSDK) {
+                    cueSDK.postMessage(argString);
+                }
+            }
+
+            var _selector = document.querySelector('input[name=torchCheckbox]');
+            _selector.addEventListener('change', function(event) {
+                var method = (_selector.checked) ? "on" : "off";
+                callMethod(torchServiceName, method);
+            });
+            var _torchLevelButton = document.querySelector('button[name=torchLevelButton]');
+            _torchLevelButton.addEventListener('click', function(event) {
+                _selector.checked=true;
+                callMethod(torchServiceName, "on", 0.05);
+            });
+            var _torchStateButton = document.querySelector('button[name=torchStateButton]');
+            _torchStateButton.addEventListener('click', function(event) {
+                callMethod(torchServiceName, "isOn");
+            });
+            var _vibrateButton = document.querySelector('button[name=vibrateButton]');
+            _vibrateButton.addEventListener('click', function(event) {
+                callMethod(vibrationServiceName, "vibrate", 500);
+            });
+            var _sparkleButton = document.querySelector('button[name=sparkleButton]');
+            _sparkleButton.addEventListener('click', function(event) {
+                callMethod(torchServiceName, "sparkle", 5000);
+            });
+            var _advancedSparkleButton = document.querySelector('button[name=advancedSparkleButton]');
+            _advancedSparkleButton.addEventListener('click', function(event) {
+                callMethod(torchServiceName, "advancedSparkle", 2000, 1000, 2000, 1.0);
+            });
+            var _hasPhotoSaveButton = document.querySelector('button[name=hasPhotoSaveButton]');
+            _hasPhotoSaveButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "hasSavePhotoPermission");
+            });
+            var _hasMicButton = document.querySelector('button[name=hasMicButton]');
+            _hasMicButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "hasMicPermission");
+            });
+            var _hasCamButton = document.querySelector('button[name=hasCamButton]');
+            _hasCamButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "hasCameraPermission");
+            });
+            var _askPhotoSaveButton = document.querySelector('button[name=askPhotoSaveButton]');
+            _askPhotoSaveButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "getSavePhotoPermission");
+            });
+            var _askMicButton = document.querySelector('button[name=askMicButton]');
+            _askMicButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "getMicPermission");
+            });
+            var _askCamButton = document.querySelector('button[name=askCamButton]');
+            _askCamButton.addEventListener('click', function(event) {
+                callMethod(permissionsServiceName, "getCameraPermission");
+            });
+            var _testErrorButton = document.querySelector('button[name=testErrorButton]');
+            _testErrorButton.addEventListener('click', function(event) {
+                callMethod(torchServiceName, "testError");
+            });
+        </script>
+    </body>
+</html>

@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">NoSDKDemo</string>
+    <string name="navigate_to_url">Open in WebView</string>
+    <string name="open_sample_page">Sample in WebView</string>
+    <string name="type_url_to_navigate">Type URL to navigate</string>
+    <string name="exit_button">Exit</string>
+</resources>
