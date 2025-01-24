@@ -11,6 +11,7 @@ import android.hardware.camera2.CameraManager.TorchCallback
 import android.os.*
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.camera.core.CameraControl
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import org.json.JSONArray
@@ -29,8 +30,12 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
     private val torchServiceName = "torch"
     private val vibrationServiceName = "vibration"
     private val permissionsServiceName = "permissions"
+    private val cameraServiceName = "camera"
     private val onMethodName = "on"
     private val offMethodName = "off"
+    private val openCameraMethodName = "openCamera"
+    private val openPhotoCameraMethod = "openPhotoCamera"
+    private val openVideoCameraMethod = "openVideoCamera"
     private val checkIsOnMethodName = "isOn"
     private val vibrateMethodName = "vibrate"
     private val sparkleMethodName = "sparkle"
@@ -53,6 +58,7 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
             isFlashlightOn = enabled
         }
     }
+    var previewCameraControl: CameraControl? = null
 
     init {
         cameraManager.registerTorchCallback(torchCallback, null)
@@ -69,43 +75,61 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
     }
 
     private fun turnTorchToLevel(level: Float, isJavaScriptCallbackNeeded: Boolean = true) {
-        try {
-            val cameraId = cameraManager.cameraIdList[0]
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val characteristics = cameraManager.getCameraCharacteristics(cameraId)
-                val supportedMaxLevel =
-                    characteristics.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL)
-                // Check if camera supports Torch Strength Control
-                if ((supportedMaxLevel != null) && (supportedMaxLevel > 1)) {
-                    val strengthLevel = (supportedMaxLevel * level).roundToInt()
-                    if (strengthLevel > 0) {
-                        cameraManager.turnOnTorchWithStrengthLevel(cameraId, strengthLevel)
-                    }
-                    if (isJavaScriptCallbackNeeded) {
-                        sendToJavaScript(null)
+        //  Currently there is no way to control the strength while the CameraX is opened
+        val cameraControl = this.previewCameraControl
+        if (cameraControl != null) {
+            cameraControl.enableTorch(true)
+            if (isJavaScriptCallbackNeeded) {
+                sendToJavaScript(null)
+            }
+        } else {
+            try {
+                val cameraId = cameraManager.cameraIdList[0]
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val characteristics = cameraManager.getCameraCharacteristics(cameraId)
+                    val supportedMaxLevel =
+                        characteristics.get(CameraCharacteristics.FLASH_INFO_STRENGTH_MAXIMUM_LEVEL)
+                    // Check if camera supports Torch Strength Control
+                    if ((supportedMaxLevel != null) && (supportedMaxLevel > 1)) {
+                        val strengthLevel = (supportedMaxLevel * level).roundToInt()
+                        if (strengthLevel > 0) {
+                            cameraManager.turnOnTorchWithStrengthLevel(cameraId, strengthLevel)
+                        }
+                        if (isJavaScriptCallbackNeeded) {
+                            sendToJavaScript(null)
+                        }
+                    } else {
+                        //Simply turn torch on
+                        turnTorch(true, isJavaScriptCallbackNeeded)
                     }
                 } else {
                     //Simply turn torch on
                     turnTorch(true, isJavaScriptCallbackNeeded)
                 }
-            } else {
-                //Simply turn torch on
-                turnTorch(true, isJavaScriptCallbackNeeded)
+            } catch (e: CameraAccessException) {
+                errorToJavaScript("Method turnTorchToLevel - Camera access denied: " + e.localizedMessage)
             }
-        } catch (e: CameraAccessException) {
-            errorToJavaScript("Method turnTorchToLevel - Camera access denied: " + e.localizedMessage)
         }
     }
 
+    // Using methods of CameraX/Camera2 API to turn torch on/off when front camera is active
     private fun turnTorch(isOn: Boolean, isJavaScriptCallbackNeeded: Boolean = true) {
-        try {
-            val cameraId = cameraManager.cameraIdList[0]
-            cameraManager.setTorchMode(cameraId, isOn)
+        val cameraControl = this.previewCameraControl
+        if (cameraControl != null) {
+            cameraControl.enableTorch(isOn)
             if (isJavaScriptCallbackNeeded) {
                 sendToJavaScript(null)
             }
-        } catch (e: CameraAccessException) {
-            errorToJavaScript("Method turnTorch - Camera access denied")
+        } else {
+            try {
+                val cameraId = cameraManager.cameraIdList[0]
+                cameraManager.setTorchMode(cameraId, isOn)
+                if (isJavaScriptCallbackNeeded) {
+                    sendToJavaScript(null)
+                }
+            } catch (e: CameraAccessException) {
+                errorToJavaScript("Method turnTorch - Camera access denied")
+            }
         }
     }
 
@@ -367,14 +391,30 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
                                 hasPermission(PermissionConstant.ASK_SAVE_PHOTO_REQUEST)
                             }
                         }
+                    } else if (serviceName == cameraServiceName) {
+                        when (methodName) {
+                            openCameraMethodName ->  {
+                                openCamera(CameraLayoutType.BOTH)
+                            }
+                            openPhotoCameraMethod ->  {
+                                openCamera(CameraLayoutType.PHOTO_ONLY)
+                            }
+                            openVideoCameraMethod ->  {
+                                openCamera(CameraLayoutType.VIDEO_ONLY)
+                            }
+                        }
                     } else {
-                        errorToJavaScript("Only services '$torchServiceName', '$vibrationServiceName', '$permissionsServiceName' are supported")
+                        errorToJavaScript("Only services '$torchServiceName', '$vibrationServiceName', '$permissionsServiceName', '$cameraServiceName' are supported")
                     }
                 }
             } else {
                 errorToJavaScript("No correct serviceName or/and methodName were passed")
             }
         }
+    }
+
+    private fun openCamera(cameraLayoutType : CameraLayoutType) {
+        (mContext as WebViewActivity).startCamera(cameraLayoutType)
     }
 
     private fun errorToJavaScript(errorMessage: String) {

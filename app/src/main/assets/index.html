@@ -2,6 +2,7 @@
 <html>
     <head>
         <meta name="viewport" content="width=device-width, initial-scale=1"/>
+
         <style>
             body {background: lightgrey;}
             .button { position: relative; min-width: 160px; height: 54px; font-size: 16px;}
@@ -61,11 +62,24 @@
         <h3></h3>
         <div id="methodResult"></div>
         <h3></h3>
+        <button class="button" name="testMicButton">Test Microphone</button>
+        <h3></h3>
+        <audio id="audio" controls></audio>
+        <h3></h3>
+        <button class="button" name="testCamButton">Photo & Video Camera</button>
+        <h3></h3>
+        <button class="button" name="testPhotoCamButton">Test Photo Camera</button>
+        <h3></h3>
+        <button class="button" name="testVideoCamButton">Test Video Camera</button>
+        <h3></h3>
+<!--        <video id="video" controls></video>-->
         <script>
             const requestId = 323412;
             const torchServiceName = "torch";
             const vibrationServiceName = "vibration";
             const permissionsServiceName = "permissions";
+            const storageServiceName = "storage";
+            const cameraServiceName = "camera";
 
             //JSON is passed from app like that:
             //cueSDKCallback(JSON.stringify({
@@ -85,6 +99,45 @@
                 if (cueSDK) {
                     cueSDK.postMessage(argString);
                 }
+            }
+
+            function testMicrophone() {
+                player = document.getElementById('audio');
+                navigator.mediaDevices
+                    .getUserMedia({audio: true, video: false})
+                    .then((stream) => {
+                        player.srcObject = stream;
+                        player.autoplay = true;
+                    })
+                .catch((err) => {
+                    alert(`You got an error: ${err}`);
+                });
+            }
+            function testCamera() {
+                setTimeout(function() {
+                    callMethod(torchServiceName, "sparkle", 2000);
+                }, 3000);
+                callMethod(cameraServiceName, "openCamera");
+            }
+            function testPhotoCamera() {
+                callMethod(cameraServiceName, "openPhotoCamera");
+            }
+            function testVideoCamera() {
+                callMethod(cameraServiceName, "openVideoCamera");
+            }
+            
+            // Old implementation, not used now
+            function testCameraOld() {
+                player = document.getElementById('video');
+                navigator.mediaDevices
+                    .getUserMedia({audio: false, video: true})
+                    .then((stream) => {
+                        player.srcObject = stream;
+                        player.autoplay = true;
+                    })
+                .catch((err) => {
+                    alert(`You got an error: ${err}`);
+                });
             }
 
             var _selector = document.querySelector('input[name=torchCheckbox]');
@@ -140,6 +193,22 @@
             var _testErrorButton = document.querySelector('button[name=testErrorButton]');
             _testErrorButton.addEventListener('click', function(event) {
                 callMethod(torchServiceName, "testError");
+            });
+            var _testMicButton = document.querySelector('button[name=testMicButton]');
+            _testMicButton.addEventListener('click', function(event) {
+                testMicrophone();
+            });
+            var _testCamButton = document.querySelector('button[name=testCamButton]');
+            _testCamButton.addEventListener('click', function(event) {
+                testCamera();
+            });
+            var _testPhotoCamButton = document.querySelector('button[name=testPhotoCamButton]');
+            _testPhotoCamButton.addEventListener('click', function(event) {
+                testPhotoCamera();
+            });
+            var _testVideoCamButton = document.querySelector('button[name=testVideoCamButton]');
+            _testVideoCamButton.addEventListener('click', function(event) {
+                testVideoCamera();
             });
         </script>
     </body>
