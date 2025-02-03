@@ -4,4 +4,7 @@
     <string name="open_sample_page">Sample in WebView</string>
     <string name="type_url_to_navigate">Type URL to navigate</string>
     <string name="exit_button">Exit</string>
+    <string name="camera_permission_title">Camera Permission Required</string>
+    <string name="camera_permission_message">So you can participate in the show using the camera\'s flashlight. Please allow camera access on the next step.</string>
+    <string name="button_continue">OK</string>
 </resources>

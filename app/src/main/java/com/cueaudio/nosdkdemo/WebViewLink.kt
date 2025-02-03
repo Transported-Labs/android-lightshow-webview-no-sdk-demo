@@ -2,7 +2,9 @@ package com.cueaudio.nosdkdemo
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
+import android.content.Context.MODE_PRIVATE
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraAccessException
 import android.hardware.camera2.CameraCharacteristics
@@ -42,6 +44,8 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
     private val hasCamMethodName = "hasCameraPermission"
     private val hasSavePhotoMethodName = "hasSavePhotoPermission"
     private val testErrorMethodName = "testError"
+
+    private val prefsName = "preference"
 
     private var curRequestId: Int? = null
     private var isFlashlightOn = false
@@ -256,15 +260,54 @@ class WebViewLink (private val mContext: Context, private val webView: WebView) 
             val permission: Int =
                 ContextCompat.checkSelfPermission(mContext, permissionType)
             if (permission != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                    mContext as Activity, arrayOf<String>(permissionType), requestCode
-                )
+                // For CAMERA permission show custom confirmation dialog
+                if (permissionType == Manifest.permission.CAMERA) {
+                    if (isFirstTimeAskingPermission(permissionType) ||
+                        ActivityCompat.shouldShowRequestPermissionRationale(mContext as Activity, permissionType)
+                        ) {
+                        saveFirstTimeAskingPermission(permissionType, false)
+                        askCameraConfirmation(permissionType, requestCode)
+                    } else {
+                        sendToJavaScript(false)
+                    }
+                } else {
+                    ActivityCompat.requestPermissions(
+                        mContext as Activity, arrayOf<String>(permissionType), requestCode
+                    )
+                }
             } else {
                 sendToJavaScript(true)
             }
         } else {
             errorToJavaScript("PermissionID can not be empty")
         }
+    }
+
+    private fun askCameraConfirmation(permissionType: String, requestCode: Int) {
+        val dialogTitle: String = mContext.getString(R.string.camera_permission_title)
+        val dialogMessage: String = mContext.getString(R.string.camera_permission_message)
+        val buttonContinue: String = mContext.getString(R.string.button_continue)
+        AlertDialog.Builder(mContext)
+            .setTitle(dialogTitle)
+            .setMessage(dialogMessage)
+            .setPositiveButton(buttonContinue) { dialog, _ ->
+                ActivityCompat.requestPermissions(
+                    mContext as Activity, arrayOf<String>(permissionType), requestCode
+                )
+                dialog.dismiss()
+            }
+            .create()
+            .show()
+    }
+
+    private fun saveFirstTimeAskingPermission(permission: String, isFirstTime: Boolean) {
+        val sharedPreference = mContext.getSharedPreferences(prefsName, MODE_PRIVATE)
+        sharedPreference.edit().putBoolean(permission, isFirstTime).apply()
+    }
+
+    private fun isFirstTimeAskingPermission(permission: String): Boolean {
+        val sharedPreference = mContext.getSharedPreferences(prefsName, MODE_PRIVATE)
+        return sharedPreference.getBoolean(permission, true)
     }
 
     fun callCurPermissionRequestGranted(granted: Boolean) {
